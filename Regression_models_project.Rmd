@@ -1,0 +1,148 @@
+---
+title: "Regression Models Project"
+author: "Uri Smashnov"
+date: "Saturday, February 21st, 2015"
+output: pdf_document
+---
+
+**Executive Summary**
+===
+
+Motor Trend magazine has set to evaluate various parameters that impact cars gas usage as measured by miles per gallon (MPG).  
+The research was done using *mtcars* dataset freely available with R installation. The research was set to find answers to the
+following questions:   
+1) Identify set of significant variables in determining MPG   
+2) Is an automatic or manual transmission better for MPG  
+3) Quantify the MPG difference between automatic and manual transmissions 
+
+### **Findings**
+-Weight(wt), Acceleration(qsec) and type of Transmission(am) are found to be significant at 95% confidence setting  
+-Manual transmission has been identified as better for MPG than automatic transmission  
+-Manual transmission outperforms automatic transmission by 2.94 MPG on average when holding Weight and Acceleration constant  
+
+
+**The model and the approach**
+===
+For the purpose of the research I have used backward step wise approach. I have started by including all variables, and every  
+step has eliminated one variable with the highest p-value. To confirm the approach, I have included Anova comparison between the models,  
+while Pr(>F) value higher than chosen 5% is indicating that model with higher number of variables don't improve the model.
+In the analysis of variance  table we can see that Mode 2 (our final model) is optimal between the models reviewed.  
+
+Final Model  
+---  
+The Final model and coeficients are presented below.  
+```{r cache = TRUE, echo=FALSE}
+data(mtcars)
+cars=mtcars
+cars$am=factor(cars$am)
+fit10=lm(data=cars,mpg~I(wt-min(cars$wt))+I(qsec-max(cars$qsec))+am)
+fit10
+#par(mfrow=c(2,2))
+#plot(fit10)
+```
+Coefficients interpretation
+---
+- Intercept of 31.7 can be viewed as highest MPG for car with Automatic transmission  
+- Addition of every 1,000lb to the weight will reduce MPG by 3.917 MPG. Keeping rest of the parameters unchanged    
+- Reduction of every second in acceleration will reduce MPG by 1.23 MPG. Keeping rest of the parameters unchanged    
+- Car with Manual transmission will have on average 2.94 better MPG, when holding weight and acceleration constant  
+
+**Confidence intervals for coeficients can be obtained from the Table 1 in Appendix section*  
+
+
+Residuals analysis  
+---   
+The analysis reveals that residuals deviate from normal distribution, especially toward the tails. It is also evident that  
+the spread of residuals is widens as MPG is growing. It indicates that model lacks certain parameters that can explain high MPG
+
+
+```{r cache = TRUE, echo=FALSE}
+par(mfrow=c(2,2))
+plot(fit10)
+```
+
+
+
+\pagebreak  
+
+**Appendix**    
+===   
+
+```{r cache = TRUE, echo=FALSE}
+library(ggplot2)
+library(car)
+library(stargazer)
+data(mtcars)
+cars=mtcars
+cars$am=factor(cars$am)
+###### Initial model - including all variables #####################
+fit1=lm(data=cars,mpg~cyl+disp+hp+drat+wt+qsec+vs+am+gear+carb)
+####################################################################
+fit2=lm(data=cars,mpg~disp+hp+drat+wt+qsec+vs+am+gear+carb)
+fit3=lm(data=cars,mpg~hp+drat+wt+qsec+vs+am+gear+carb)
+fit4=lm(data=cars,mpg~hp+drat+wt+qsec+am+gear+carb)
+fit5=lm(data=cars,mpg~hp+drat+wt+qsec+am+carb)
+fit6=lm(data=cars,mpg~drat+wt+qsec+am+carb)
+fit7=lm(data=cars,mpg~wt+qsec+am+carb)
+###### Final model - down to three significant variables #################
+fit8=lm(data=cars,mpg~wt+qsec+am)
+####included for ilustrative purposes to emphisize that adding of qsec and am is beneficial#####  
+fit9=lm(data=cars,mpg~wt) 
+#######################################################################
+#Model for coefficients interpretation
+fit10=lm(data=cars,mpg~I(wt-min(cars$wt))+I(qsec-max(cars$qsec))+am)
+summary(fit10)
+```
+
+```{r cache = TRUE}
+anova(fit9,fit8,fit7,fit5,fit3,fit1)
+```
+
+\pagebreak 
+```{r cache = TRUE,star, results = 'asis', warning=FALSE, message=FALSE, echo=FALSE}
+stargazer(fit1, fit4, fit8,title="Regression Models results comparison",dep.var.labels="Models",single.row=TRUE,column.labels=c("All-Var","Mid-Var","Final"),omit.stat=c("LL","ser","f"), ci=TRUE, ci.level=0.95)
+```
+
+\pagebreak   
+
+Cross plots of significant variables with computed Correlations   
+---  
+
+```{r, echo=FALSE}
+###############################################################
+# Plot with "pairs" for final model and all paramters in the dataset
+######################
+m_cars4=data.matrix(cars[,c(1,6,7,9)])
+m_cars=data.matrix(cars[,])
+panel.cor <- function(x, y, digits=2, prefix="", cex.cor, ...) {
+    usr <- par("usr")
+    on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y, use="complete.obs"))
+    txt <- format(c(r, 0.123456789), digits=digits)[1]
+    txt <- paste(prefix, txt, sep="")
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = cex.cor * (1 + r) / 2)
+}
+panel.hist <- function(x, ...) {
+    usr <- par("usr")
+    on.exit(par(usr))
+    par(usr = c(usr[1:2], 0, 1.5) )
+    h <- hist(x, plot = FALSE)
+    breaks <- h$breaks
+    nB <- length(breaks)
+    y <- h$counts
+    y <- y/max(y)
+    rect(breaks[-nB], 0, breaks[-1], y, col="white", ...)
+}
+pairs(m_cars4, upper.panel = panel.cor,
+      diag.panel = panel.hist,
+      lower.panel = panel.smooth)
+```
+
+**Conclusion and more resources**   
+===
+
+The model while providing with relatively high R-square lack in its ability to accurately predict MPG performance at the tals of the scale.  
+Is very lickly that some crusial parameters are not present in the data set.  
+The code to this report can be obrained from Github repository: <https://github.com/us8945/Regression-Models-Feb-2015>
